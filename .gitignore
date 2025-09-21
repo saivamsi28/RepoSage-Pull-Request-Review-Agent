@@ -1,0 +1,11 @@
+Python virtual environment
+venv/
+
+Python cache files
+pycache/
+
+Environment variables file - IMPORTANT for security
+.env
+
+VS Code specific settings
+.vscode/

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RepoSage - AI PR Reviewer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .loader {
+            border-top-color: #3498db;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div class="container mx-auto max-w-4xl p-4 sm:p-6 md:p-8">
+        
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-900">RepoSage</h1>
+            <p class="text-lg text-gray-600 mt-2">Your AI-Powered Pull Request Review Agent</p>
+        </header>
+
+        <main class="bg-white rounded-lg shadow-lg p-6 sm:p-8">
+            <form id="review-form">
+                <div>
+                    <label for="pr_url" class="block text-sm font-medium text-gray-700 mb-1">GitHub Pull Request URL</label>
+                    <input type="url" id="pr_url" name="pr_url" placeholder="e.g., https://github.com/owner/repo/pull/123" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
+                </div>
+
+                <div class="mt-8 text-center">
+                    <button type="submit" id="analyze-btn" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        <span id="btn-text">Analyze Pull Request</span>
+                        <div id="loader" class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-6 w-6 ml-3 hidden"></div>
+                    </button>
+                </div>
+            </form>
+            
+            <div id="result-container" class="mt-10 hidden">
+                <h2 class="text-2xl font-semibold text-gray-900 border-b pb-2 mb-4">Analysis Feedback</h2>
+                <div id="feedback" class="prose max-w-none p-4 bg-gray-50 rounded-md"></div>
+            </div>
+
+            <div id="error-container" class="mt-6 hidden">
+                 <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md" role="alert">
+                    <strong class="font-bold">Error:</strong>
+                    <span id="error-message" class="block sm:inline"></span>
+                </div>
+            </div>
+        </main>
+
+    </div>
+
+    <script>
+        document.getElementById('review-form').addEventListener('submit', async function(event) {
+            event.preventDefault();
+
+            const analyzeBtn = document.getElementById('analyze-btn');
+            const btnText = document.getElementById('btn-text');
+            const loader = document.getElementById('loader');
+            const resultContainer = document.getElementById('result-container');
+            const errorContainer = document.getElementById('error-container');
+            const feedbackDiv = document.getElementById('feedback');
+            const errorMessageSpan = document.getElementById('error-message');
+
+            btnText.textContent = 'Analyzing...';
+            loader.classList.remove('hidden');
+            analyzeBtn.disabled = true;
+            resultContainer.classList.add('hidden');
+            errorContainer.classList.add('hidden');
+
+            const formData = {
+                pull_request_url: document.getElementById('pr_url').value
+            };
+
+            try {
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.error || 'An unknown error occurred.');
+                }
+                
+                // A simple markdown to HTML converter to make feedback look nice
+                let htmlFeedback = result.feedback.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); // Bold
+                htmlFeedback = htmlFeedback.replace(/```([\s\S]*?)```/g, '<pre class="bg-gray-200 p-2 rounded"><code>$1</code></pre>'); // Code blocks
+                htmlFeedback = htmlFeedback.replace(/\n/g, '<br>'); // Newlines
+
+                feedbackDiv.innerHTML = htmlFeedback;
+                resultContainer.classList.remove('hidden');
+
+            } catch (error) {
+                errorMessageSpan.textContent = error.message;
+                errorContainer.classList.remove('hidden');
+            } finally {
+                btnText.textContent = 'Analyze Pull Request';
+                loader.classList.add('hidden');
+                analyzeBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
