@@ -11,7 +11,12 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f0f2f5; }
-        .gradient-text { background: linear-gradient(135deg, #4f46e5, #7c3aed); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .gradient-text {
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
         .card { background: white; border-radius: 0.75rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); padding: 1.5rem; transition: all 0.3s ease; }
         .loader { border: 4px solid #f3f3f3; border-top: 4px solid #4f46e5; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -56,127 +61,4 @@
                     </div>
                     <div class="flex items-center gap-2 mt-4 md:mt-0">
                         <span class="font-semibold text-gray-700">Quality Score:</span>
-                        <span id="quality-score" class="text-2xl font-bold text-indigo-600 bg-indigo-100 rounded-full w-16 h-16 flex items-center justify-center">0</span>
-                    </div>
-                </div>
-                
-                <div id="feedback-cards" class="space-y-4 prose max-w-none"></div>
-
-                <div class="mt-8 text-center">
-                    <button id="new-analysis-btn" class="px-6 py-2 bg-gray-200 text-gray-800 font-medium rounded-lg hover:bg-gray-300 transition">
-                        Analyze Another PR
-                    </button>
-                </div>
-            </div>
-
-            <div id="error-view" class="hidden bg-red-50 border-l-4 border-red-500 p-4 rounded-md">
-                <p class="font-semibold text-red-800">Analysis Failed</p>
-                <p id="error-message" class="text-red-700 mt-1"></p>
-            </div>
-        </main>
-
-        <footer class="text-center mt-8 text-gray-500 text-sm">
-            <p>Powered by Google Gemini</p>
-        </footer>
-    </div>
-
-    <script>
-        const formView = document.getElementById('form-view');
-        const resultView = document.getElementById('result-view');
-        const errorView = document.getElementById('error-view');
-        const analyzeBtn = document.getElementById('analyze-btn');
-        const btnText = document.getElementById('btn-text');
-        const loader = document.getElementById('loader');
-
-        document.getElementById('review-form').addEventListener('submit', async function(event) {
-            event.preventDefault();
-            
-            btnText.textContent = 'Analyzing...';
-            loader.classList.remove('hidden');
-            analyzeBtn.disabled = true;
-            errorView.classList.add('hidden');
-            resultView.classList.add('hidden');
-
-            const prURL = document.getElementById('pr_url').value;
-
-            try {
-                const response = await fetch('/analyze', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ pull_request_url: prURL })
-                });
-                
-                const result = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(result.error || `HTTP error! Status: ${response.status}`);
-                }
-                
-                displayResults(result);
-
-            } catch (error) {
-                document.getElementById('error-message').textContent = error.message;
-                errorView.classList.remove('hidden');
-            } finally {
-                btnText.textContent = 'Analyze Pull Request';
-                loader.classList.add('hidden');
-                analyzeBtn.disabled = false;
-            }
-        });
-        
-        function displayResults(result) {
-            document.getElementById('repo-name').textContent = result.metadata.repository + ` #${result.metadata.pr_number}`;
-            
-            const scoreMatch = result.feedback.match(/Quality Score\s*:\s*(\d+)/);
-            const score = scoreMatch ? scoreMatch[1] : 'N/A';
-            document.getElementById('quality-score').textContent = score;
-
-            const sections = {
-                "Executive Summary": "",
-                "Critical Issues": "",
-                "Suggestions for Improvement": "",
-                "Positive Feedback": ""
-            };
-
-            const feedbackLines = result.feedback.split('\n');
-            let currentSection = null;
-
-            for (const line of feedbackLines) {
-                const trimmedLine = line.trim();
-                if (trimmedLine.startsWith('### ')) {
-                    const sectionTitle = trimmedLine.substring(4).trim();
-                    if (sections.hasOwnProperty(sectionTitle)) {
-                        currentSection = sectionTitle;
-                        continue;
-                    }
-                }
-                if (currentSection && !line.includes("Quality Score")) {
-                    sections[currentSection] += line + '\n';
-                }
-            }
-            
-            const cardsContainer = document.getElementById('feedback-cards');
-            cardsContainer.innerHTML = '';
-
-            for (const [title, content] of Object.entries(sections)) {
-                if (content.trim()) {
-                    const card = document.createElement('div');
-                    card.className = 'card';
-                    card.innerHTML = marked.parse(`### ${title}\n${content}`);
-                    cardsContainer.appendChild(card);
-                }
-            }
-
-            formView.classList.add('hidden');
-            resultView.classList.remove('hidden');
-        }
-
-        document.getElementById('new-analysis-btn').addEventListener('click', () => {
-            document.getElementById('review-form').reset();
-            resultView.classList.add('hidden');
-            errorView.classList.add('hidden');
-            formView.classList.remove('hidden');
-        });
-    </script>
-</body>
-</html>
+                        <span id="quality-score" class="text-2
