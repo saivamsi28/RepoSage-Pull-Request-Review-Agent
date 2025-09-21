@@ -18,6 +18,7 @@ def validate_github_url(url: str):
     Validates a GitHub PR URL and extracts owner, repo, and PR number.
     Returns a tuple (owner, repo, pr_number) or raises ValueError.
     """
+    
     if not url or not isinstance(url, str):
         raise ValueError("URL must be a non-empty string.")
     

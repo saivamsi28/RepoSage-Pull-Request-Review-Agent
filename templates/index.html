@@ -36,21 +36,19 @@
 
         <main id="main-content" class="card">
             <div id="form-view">
-                <form id="review-form">
-                    <div class="mb-6">
-                        <label for="pr_url" class="block text-sm font-semibold text-gray-800 mb-2">GitHub Pull Request URL</label>
-                        <input type="url" id="pr_url" name="pr_url"
-                               placeholder="e.g., https://github.com/owner/repo/pull/123"
-                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
-                               required>
-                    </div>
-                    <div class="flex justify-center">
-                        <button type="submit" id="analyze-btn" class="px-8 py-3 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 transition-transform transform hover:scale-105 flex items-center gap-3">
-                            <span id="btn-text">Analyze Pull Request</span>
-                            <div id="loader" class="loader hidden"></div>
-                        </button>
-                    </div>
-                </form>
+                <div class="mb-6">
+                    <label for="pr_url" class="block text-sm font-semibold text-gray-800 mb-2">GitHub Pull Request URL</label>
+                    <input type="text" id="pr_url" name="pr_url"
+                           placeholder="e.g., https://github.com/owner/repo/pull/123"
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+                           required>
+                </div>
+                <div class="flex justify-center">
+                    <button type="button" id="analyze-btn" class="px-8 py-3 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 transition-transform transform hover:scale-105 flex items-center gap-3">
+                        <span id="btn-text">Analyze Pull Request</span>
+                        <div id="loader" class="loader hidden"></div>
+                    </button>
+                </div>
             </div>
 
             <div id="result-view" class="hidden">
@@ -61,4 +59,132 @@
                     </div>
                     <div class="flex items-center gap-2 mt-4 md:mt-0">
                         <span class="font-semibold text-gray-700">Quality Score:</span>
-                        <span id="quality-score" class="text-2
+                        <span id="quality-score" class="text-2xl font-bold text-indigo-600 bg-indigo-100 rounded-full w-16 h-16 flex items-center justify-center">0</span>
+                    </div>
+                </div>
+                
+                <div id="feedback-cards" class="space-y-4 prose max-w-none"></div>
+
+                <div class="mt-8 text-center">
+                    <button id="new-analysis-btn" class="px-6 py-2 bg-gray-200 text-gray-800 font-medium rounded-lg hover:bg-gray-300 transition">
+                        Analyze Another PR
+                    </button>
+                </div>
+            </div>
+
+            <div id="error-view" class="hidden bg-red-50 border-l-4 border-red-500 p-4 rounded-md">
+                <p class="font-semibold text-red-800">Analysis Failed</p>
+                <p id="error-message" class="text-red-700 mt-1"></p>
+            </div>
+        </main>
+
+        <footer class="text-center mt-8 text-gray-500 text-sm">
+            <p>Powered by Google Gemini</p>
+        </footer>
+    </div>
+
+    <script>
+        const formView = document.getElementById('form-view');
+        const resultView = document.getElementById('result-view');
+        const errorView = document.getElementById('error-view');
+        const analyzeBtn = document.getElementById('analyze-btn');
+        const btnText = document.getElementById('btn-text');
+        const loader = document.getElementById('loader');
+
+        analyzeBtn.addEventListener('click', async function() {
+            btnText.textContent = 'Analyzing...';
+            loader.classList.remove('hidden');
+            analyzeBtn.disabled = true;
+            errorView.classList.add('hidden');
+            resultView.classList.add('hidden');
+
+            const prURL = document.getElementById('pr_url').value;
+
+            // Manual validation
+            if (!prURL) {
+                document.getElementById('error-message').textContent = 'Please provide a Pull Request URL.';
+                errorView.classList.remove('hidden');
+                btnText.textContent = 'Analyze Pull Request';
+                loader.classList.add('hidden');
+                analyzeBtn.disabled = false;
+                return;
+            }
+
+            try {
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ pull_request_url: prURL })
+                });
+                
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.error || `HTTP error! Status: ${response.status}`);
+                }
+                
+                displayResults(result);
+
+            } catch (error) {
+                document.getElementById('error-message').textContent = error.message;
+                errorView.classList.remove('hidden');
+            } finally {
+                btnText.textContent = 'Analyze Pull Request';
+                loader.classList.add('hidden');
+                analyzeBtn.disabled = false;
+            }
+        });
+        
+        function displayResults(result) {
+            document.getElementById('repo-name').textContent = result.metadata.repository + ` #${result.metadata.pr_number}`;
+            
+            const feedback = result.feedback;
+            let score = 'N/A';
+            const scoreSectionRegex = /###\s*Quality Score([\s\S]*?)(?=###|$)/;
+            const scoreSectionMatch = feedback.match(scoreSectionRegex);
+            
+            if (scoreSectionMatch) {
+                const numberRegex = /(\d+)/;
+                const numberMatch = scoreSectionMatch[1].match(numberRegex);
+                if (numberMatch) {
+                    score = numberMatch[1];
+                }
+            }
+            document.getElementById('quality-score').textContent = score;
+
+            const cardsContainer = document.getElementById('feedback-cards');
+            cardsContainer.innerHTML = ''; 
+
+            const sectionsToDisplay = [
+                "Executive Summary",
+                "Critical Issues",
+                "Suggestions for Improvement",
+                "Positive Feedback"
+            ];
+
+            for (const title of sectionsToDisplay) {
+                const sectionRegex = new RegExp(`###\\s*${title}([\\s\\S]*?)(?=###|$)`);
+                const match = feedback.match(sectionRegex);
+
+                if (match && match[1].trim()) {
+                    const content = match[1].trim();
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    card.innerHTML = marked.parse(`### ${title}\n${content}`);
+                    cardsContainer.appendChild(card);
+                }
+            }
+
+            formView.classList.add('hidden');
+            resultView.classList.remove('hidden');
+        }
+
+        document.getElementById('new-analysis-btn').addEventListener('click', () => {
+            document.getElementById('review-form').reset();
+            resultView.classList.add('hidden');
+            errorView.classList.add('hidden');
+            formView.classList.remove('hidden');
+        });
+    </script>
+</body>
+</html>
